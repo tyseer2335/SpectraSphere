@@ -1,6 +1,6 @@
-import { LoadingIndicator } from "./LoadingIndicator"
-import { SpatialImageFrame } from "./SpatialImageFrame"
 
+import { SpatialImageFrame } from "./SpatialImageFrame";
+import { LoadingIndicator } from "./LoadingIndicator";
 /**
  * Provides a somewhat complex example of use of the spatial image components.
  *

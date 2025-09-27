@@ -796,6 +796,59 @@ private prepareTextForSpeech(text: string): string {
   return speechText;
 }
 
+private splitTextForTTS(text: string, maxLength: number = 400): string[] {
+  // Split text into chunks to avoid TTS model's maximum sequence length limit
+  // If text is within limit, return as single chunk
+  if (text.length <= maxLength) {
+    return [text];
+  }
+  
+  const chunks: string[] = [];
+  let currentText = text;
+  
+  while (currentText.length > maxLength) {
+    let cutIndex = maxLength;
+    
+    // Try to find a good break point (sentence end)
+    const sentenceEnd = currentText.lastIndexOf('. ', maxLength);
+    if (sentenceEnd > maxLength * 0.5) { // At least halfway through
+      cutIndex = sentenceEnd + 1;
+    } else {
+      // Try to find other punctuation
+      const questionEnd = currentText.lastIndexOf('? ', maxLength);
+      const exclamationEnd = currentText.lastIndexOf('! ', maxLength);
+      const commaEnd = currentText.lastIndexOf(', ', maxLength);
+      
+      const bestEnd = Math.max(questionEnd, exclamationEnd, commaEnd);
+      if (bestEnd > maxLength * 0.5) {
+        cutIndex = bestEnd + 1;
+      } else {
+        // Find last space to avoid cutting words
+        const lastSpace = currentText.lastIndexOf(' ', maxLength);
+        if (lastSpace > maxLength * 0.7) { // At least 70% through
+          cutIndex = lastSpace;
+        }
+      }
+    }
+    
+    // Extract chunk and add to array
+    const chunk = currentText.substring(0, cutIndex).trim();
+    if (chunk.length > 0) {
+      chunks.push(chunk);
+    }
+    
+    // Continue with remaining text
+    currentText = currentText.substring(cutIndex).trim();
+  }
+  
+  // Add remaining text if any
+  if (currentText.length > 0) {
+    chunks.push(currentText);
+  }
+  
+  return chunks;
+}
+
 private async generateSpeechAudio(ttsRequest: any): Promise<AudioTrackAsset | null> {
   try {
     if (!this.ttsModule) {
@@ -803,7 +856,15 @@ private async generateSpeechAudio(ttsRequest: any): Promise<AudioTrackAsset | nu
       return null;
     }
 
-    print(`StoryViewer: Generating TTS for: "${ttsRequest.text.substring(0, 50)}..."`);
+    // Split text into chunks if it's too long for TTS (max 400 characters)
+    const textChunks = this.splitTextForTTS(ttsRequest.text, 400);
+    const textToSpeak = textChunks[0]; // Use first chunk for now
+    
+    if (textChunks.length > 1) {
+      print(`StoryViewer: Text was too long (${ttsRequest.text.length} chars), using first chunk (${textToSpeak.length} chars)`);
+    }
+
+    print(`StoryViewer: Generating TTS for: "${textToSpeak.substring(0, 50)}..."`);
 
     // Create a promise to handle the async TTS callback
     return new Promise<AudioTrackAsset | null>((resolve, reject) => {
@@ -828,7 +889,7 @@ private async generateSpeechAudio(ttsRequest: any): Promise<AudioTrackAsset | nu
 
         // Call the TTS module with all 4 required parameters
         this.ttsModule.synthesize(
-          ttsRequest.text,    // input text
+          textToSpeak,        // use chunked text instead of original
           options,            // TTS options
           onTTSComplete,      // success callback
           onTTSError         // error callback

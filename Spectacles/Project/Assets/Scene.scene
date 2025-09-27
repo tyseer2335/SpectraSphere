@@ -6660,7 +6660,6 @@
     narratorVoice: true
     speechRate: true
     speechPitch: true
-    narratorVolume: true
   ScriptTypesDefault:
     {}
   ScriptInputs:
@@ -6706,7 +6705,7 @@
       narratorVoice: female
       speechRate: !<float> 1.000000
       speechPitch: !<float> 1.000000
-      narratorVolume: 0.800000
+      narratorVolume: !<float> 1.000000
   ScriptTypes:
     "":
       {}
